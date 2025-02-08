@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <string.h>
 #include "pico/stdlib.h"
 #include "hardware/uart.h"
 #include "hardware/i2c.h"
@@ -25,19 +26,26 @@
  * static: variável permanece na memória durante toda a execução do programa 
  * volatile: a variável pode ser alterada por eventos externos
  */ 
-static volatile uint contador = 0; // Contador para exibir o número correto na Matriz de LEDs 5x5
 static volatile uint32_t last_time = 0; // Armazena o tempo do último evento (em microssegundos)
 static volatile PIO pio;
 static volatile uint sm = 0;
 // Variável de inicialização do display
 ssd1306_t ssd; 
+// Variável string para linhas do Display (máximo 12 caracteres por linha)
+char linhaTextoDisplay[12];
+
 
 // Inicializa vetor para apagar todos os leds
 static double numeros_apaga[NUM_LEDS] = {0.0, 0.0, 0.0, 0.0, 0.0,
-                                          0.0, 0.0, 0.0, 0.0, 0.0, 
-                                          0.0, 0.0, 0.0, 0.0, 0.0,
-                                          0.0, 0.0, 0.0, 0.0, 0.0,
-                                          0.0, 0.0, 0.0, 0.0, 0.0};
+                                         0.0, 0.0, 0.0, 0.0, 0.0, 
+                                         0.0, 0.0, 0.0, 0.0, 0.0,
+                                         0.0, 0.0, 0.0, 0.0, 0.0,
+                                         0.0, 0.0, 0.0, 0.0, 0.0};
+
+// Função para acender o LED por um tempo específico
+void controlaLed(uint gpio, bool operacao) {
+    gpio_put(gpio, operacao); // Liga/Desliga o LED indicado no parâmetro gpio
+}
 
 // Prototipação da função de interrupção
 static void gpio_irq_handler(uint gpio, uint32_t events);
@@ -53,20 +61,25 @@ void gpio_irq_handler(uint gpio, uint32_t events) {
 
         // Exibe número na Matriz de LEDs 5x5
         if (gpio == GPIO_BOTAO_A) {
-            if (contador == 9) {
-                contador = -1;
-            }
-            contador++; // Incrementa contador
-            gera_numeros(contador, pio, sm);
+            controlaLed(GPIO_LED_G, !gpio_get(GPIO_LED_G));
+            // Envia o texto para o display
+            sprintf(linhaTextoDisplay, "%s%s", "RGB VERDE: ", (gpio_get(GPIO_LED_G) == 1) ? "ON " : "OFF"); 
+            ssd1306_draw_string(&ssd, linhaTextoDisplay, 8, 30); 
+            // Atualiza o display
+            ssd1306_send_data(&ssd); 
+            // Envia texto para o Serial Monitor
+            printf("%s\n", linhaTextoDisplay);
         } 
         else if (gpio == GPIO_BOTAO_B) {
-            if (contador == 0) {
-                contador = 10;
-            }
-            contador--; // Decrementa contador
-            gera_numeros(contador, pio, sm);
+            controlaLed(GPIO_LED_B, !gpio_get(GPIO_LED_B));
+            // Envia o texto para o display
+            sprintf(linhaTextoDisplay, "%s%s", "RGB AZUL: ", (gpio_get(GPIO_LED_B) == 1) ? "ON " : "OFF"); 
+            ssd1306_draw_string(&ssd, linhaTextoDisplay, 8, 48); 
+            // Atualiza o display
+            ssd1306_send_data(&ssd); 
+            // Envia texto para o Serial Monitor
+            printf("%s\n", linhaTextoDisplay);
         }
-        printf("Mudanca do número exibido na Matriz de LEDs 5x5. Numero exibido= %d\n", contador);
     }
 }
 
@@ -163,8 +176,8 @@ int main() {
     int numero = 0;
     // Variável para verificar se houve conexão via USB para entrada/saída
     bool bUsbConnected = false;
-
-
+    
+    // Laço principal do programa 
     while (true) {
         bUsbConnected = stdio_usb_connected();
         // Verifica se o USB está conectado
@@ -175,17 +188,14 @@ int main() {
                 // Converte de char para string
                 char str1[2] = {caractere , '\0'};
                 char str2[2] = "";
-                strcpy(str2,str1);
+                strcpy(str2, str1);
 
-                // Limpa o display
-                ssd1306_fill(&ssd, true); 
-                // Desenha um retângulo
-                ssd1306_rect(&ssd, 3, 3, 122, 58, false, true); 
-                // Desenha uma string
-                ssd1306_draw_string(&ssd, str2, 8, 10); 
+                // Envia o caractere digitado para o display
+                sprintf(linhaTextoDisplay, "%s%s", "CARACTERE  ", str2);
+                ssd1306_draw_string(&ssd, linhaTextoDisplay, 8, 10); 
                 // Atualiza o display
                 ssd1306_send_data(&ssd); 
-
+                // Verifica se o caractere digitado foi um número e acende a Matriz de LEDs 5x5
                 switch (caractere) {
                     case '0':
                         numero = caractere - '0';
@@ -245,79 +255,5 @@ int main() {
         }
         sleep_ms(40);
     }
-
     return 0;
-
-/*
-    // Laço principal do programa
-    while (1) {
-        bUsbConnected = stdio_usb_connected();
-        if (stdio_usb_connected()) {
-            // Verifica se o usuário digitou algum caractere
-            char c;
-            if (scanf("Digite um caractere: %c", &c) == 1) {
-                printf("Caractere recebido: '%c'\n\n", c);
-/*                
-                //imprime_display('t');
-                ssd1306_fill(&ssd, true); // Limpa o display
-                ssd1306_rect(&ssd, 3, 3, 122, 58, false, true); // Desenha um retângulo
-                ssd1306_draw_string(&ssd, "CEPEDI   TIC37", 8, 10); // Desenha uma string
-                ssd1306_draw_string(&ssd, "EMBARCATECH", 20, 30); // Desenha uma string
-                ssd1306_draw_string(&ssd, "PROF WILTON", 15, 48); // Desenha uma string      
-                ssd1306_send_data(&ssd); // Atualiza o display
-
-                //                ssd1306_draw_string(&ssd, "caractere", 8, 10); // Desenha uma string
-//                ssd1306_send_data(&ssd); // Atualiza o display
-
-                //imprime_display(caractere);
-                switch (caractere) {
-                    case '0':
-                        numero = caractere - '0';
-                        gera_numeros(numero, pio, sm);
-                        break;
-                    case '1':
-                        numero = caractere - '0';
-                        gera_numeros(numero, pio, sm);
-                        break;
-                    case '2':
-                        numero = caractere - '0';
-                        gera_numeros(numero, pio, sm);
-                        break;
-                    case '3':
-                        numero = caractere - '0';
-                        gera_numeros(numero, pio, sm);
-                        break;
-                    case '4':
-                        numero = caractere - '0';
-                        gera_numeros(numero, pio, sm);
-                        break;
-                    case '5':
-                        numero = caractere - '0';
-                        gera_numeros(numero, pio, sm);
-                        break;
-                    case '6':
-                        numero = caractere - '0';
-                        gera_numeros(numero, pio, sm);
-                        break;
-                    case '7':
-                        numero = caractere - '0';
-                        gera_numeros(numero, pio, sm);
-                        break;
-                    case '8':
-                        numero = caractere - '0';
-                        gera_numeros(numero, pio, sm);
-                        break;
-                    case '9':
-                        numero = caractere - '0';
-                        gera_numeros(numero, pio, sm);
-                        break;
-                }
-            }
-        }
-        else {
-            printf("Conexão USB para I/O não estabelecida!\n\n");
-        }
-        sleep_ms(40);
-    }
-*/        
 }

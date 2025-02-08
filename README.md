@@ -1,3 +1,6 @@
+### Link do vídeo explicativo
+https://youtu.be/MDhtyVqm0Lo
+
 # UART_I2C
 Embarcatech - Tarefa 1 - Aula Síncrona 03/02
 
@@ -30,4 +33,4 @@ domínio de diferentes tipos de controle.
 6. Organização do código: O código foi bem estruturado e comentado para facilitar o entendimento.
 
 ### Link do vídeo explicativo
-http://youtube.com/...
+https://youtu.be/MDhtyVqm0Lo
